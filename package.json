@@ -1,0 +1,11 @@
+{
+  "name": "openvpm",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @openpims/web dev"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  }
+}
