@@ -2,7 +2,10 @@
   "name": "openvpm",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @openpims/web dev"
+    "dev": "pnpm --filter @openpims/web dev",
+    "db:up": "docker compose -f docker/docker-compose.yml up -d --wait",
+    "db:migrate": "pnpm --filter @openpims/db db:migrate",
+    "db:check": "pnpm --filter @openpims/db db:check"
   },
   "packageManager": "pnpm@9.15.0",
   "engines": {
