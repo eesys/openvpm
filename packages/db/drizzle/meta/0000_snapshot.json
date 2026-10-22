@@ -1,5 +1,5 @@
 {
-  "id": "f0b306f2-6571-4312-837e-1067ec449170",
+  "id": "016e5058-e71f-434a-85a8-b8d79ac9576b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -118,6 +118,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "practice_id": {
+          "name": "practice_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "email": {
           "name": "email",
           "type": "varchar(255)",
@@ -141,6 +147,21 @@
           "type": "varchar(32)",
           "primaryKey": false,
           "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "user_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'front_desk'"
+        },
+        "is_veterinarian": {
+          "name": "is_veterinarian",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         }
       },
       "indexes": {
@@ -158,77 +179,9 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.memberships": {
-      "name": "memberships",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
         },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "practice_id": {
-          "name": "practice_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "role": {
-          "name": "role",
-          "type": "membership_role",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'front_desk'"
-        },
-        "is_veterinarian": {
-          "name": "is_veterinarian",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        }
-      },
-      "indexes": {
-        "memberships_practice_id_uq": {
-          "name": "memberships_practice_id_uq",
+        "users_practice_id_uq": {
+          "name": "users_practice_id_uq",
           "columns": [
             {
               "expression": "practice_id",
@@ -248,23 +201,8 @@
           "method": "btree",
           "with": {}
         },
-        "memberships_user_uq": {
-          "name": "memberships_user_uq",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "memberships_practice_idx": {
-          "name": "memberships_practice_idx",
+        "users_practice_idx": {
+          "name": "users_practice_idx",
           "columns": [
             {
               "expression": "practice_id",
@@ -283,28 +221,63 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "users_role_idx": {
+          "name": "users_role_idx",
+          "columns": [
+            {
+              "expression": "practice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "role",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "users_veterinarian_idx": {
+          "name": "users_veterinarian_idx",
+          "columns": [
+            {
+              "expression": "practice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "is_veterinarian",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "deleted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
-        "memberships_practice_id_practices_id_fk": {
-          "name": "memberships_practice_id_practices_id_fk",
-          "tableFrom": "memberships",
+        "users_practice_id_practices_id_fk": {
+          "name": "users_practice_id_practices_id_fk",
+          "tableFrom": "users",
           "tableTo": "practices",
           "columnsFrom": [
             "practice_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "memberships_user_id_users_id_fk": {
-          "name": "memberships_user_id_users_id_fk",
-          "tableFrom": "memberships",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
           ],
           "columnsTo": [
             "id"
@@ -321,8 +294,8 @@
     }
   },
   "enums": {
-    "public.membership_role": {
-      "name": "membership_role",
+    "public.user_role": {
+      "name": "user_role",
       "schema": "public",
       "values": [
         "admin",

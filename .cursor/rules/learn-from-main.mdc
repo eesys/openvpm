@@ -1,0 +1,13 @@
+---
+description: 本分支对照 main 学习，只复现主分支已有的行为
+alwaysApply: true
+---
+
+# 对照 main 学习
+
+本分支用来深入学习 `/home/evan/projects/openvpm` 的 `main`。`LEARNING.md` 规定步骤，`main` 上该步列出的文件规定行为。
+
+- 先读这些文件，复现其中已经存在的表、字段和流程。
+- 这些文件里没有的表、字段或流程，不要自行添加。
+- 员工属于诊所的方式在 `packages/db/schema/users.ts`：`users.practiceId`、`role`、`isVeterinarian`。没有 memberships 表。
+- 用户没有明确要求时，不要提交。

@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 config({ path: resolve(import.meta.dirname, "../../.env") });
 
 const { db, sql } = await import("./client");
-const { memberships, practices, users } = await import("./schema/index");
+const { practices, users } = await import("./schema/index");
 
 const demoEmail = "frontdesk@demo.clinic";
 
@@ -14,16 +14,8 @@ const existingUser = await db.query.users.findFirst({
 });
 
 if (existingUser) {
-  const existingMembership = await db.query.memberships.findFirst({
-    where: eq(memberships.userId, existingUser.id),
-  });
-  if (existingMembership) {
-    await db.delete(memberships).where(eq(memberships.id, existingMembership.id));
-    await db
-      .delete(practices)
-      .where(eq(practices.id, existingMembership.practiceId));
-  }
   await db.delete(users).where(eq(users.id, existingUser.id));
+  await db.delete(practices).where(eq(practices.id, existingUser.practiceId));
 }
 
 const [practice] = await db
@@ -36,34 +28,30 @@ const [user] = await db
     email: demoEmail,
     passwordHash: "not-a-login-hash",
     name: "前台",
+    practiceId: practice.id,
   })
   .returning();
-const [membership] = await db
-  .insert(memberships)
-  .values({ practiceId: practice.id, userId: user.id })
-  .returning();
 
-const found = await db.query.memberships.findFirst({
-  where: eq(memberships.id, membership.id),
-  with: { practice: true, user: true },
+const found = await db.query.users.findFirst({
+  where: eq(users.id, user.id),
+  with: { practice: true },
 });
 
 if (
   !found?.practice ||
-  !found.user ||
   found.practiceId !== practice.id ||
   found.practice.timezone !== "America/New_York" ||
   found.role !== "front_desk" ||
   found.isVeterinarian !== false ||
-  found.user.email !== demoEmail
+  found.email !== demoEmail
 ) {
-  throw new Error("clinic membership was not stored as expected");
+  throw new Error("staff member was not stored on the practice");
 }
 
 let rejectedMissingPractice = false;
 try {
   await sql.begin(async (tx) => {
-    await tx`insert into memberships (user_id) values (${user.id})`;
+    await tx`insert into users (email, password_hash, name) values (${"missing-practice@demo.clinic"}, ${"not-a-login-hash"}, ${"无诊所"})`;
   });
 } catch (error) {
   rejectedMissingPractice = isNotNullViolation(error);
@@ -71,11 +59,11 @@ try {
 }
 
 if (!rejectedMissingPractice) {
-  throw new Error("membership without practiceId was stored");
+  throw new Error("user without practiceId was stored");
 }
 
 console.log(
-  `诊所「${found.practice.name}」的员工 ${found.user.name} 以 ${found.role} 加入，practiceId=${found.practiceId}`,
+  `诊所「${found.practice.name}」的员工 ${found.name} 以 ${found.role} 属于该诊所，practiceId=${found.practiceId}`,
 );
 
 await sql.end();
