@@ -1,6 +1,11 @@
 import { config } from "dotenv";
+import { createRequire } from "node:module";
 import { eq } from "drizzle-orm";
 import { resolve } from "node:path";
+
+const { hash } = createRequire(import.meta.url)("bcryptjs") as {
+  hash: (password: string, rounds: number) => Promise<string>;
+};
 
 config({ path: resolve(import.meta.dirname, "../../.env") });
 
@@ -26,7 +31,7 @@ const [user] = await db
   .insert(users)
   .values({
     email: demoEmail,
-    passwordHash: "not-a-login-hash",
+    passwordHash: await hash("password", 12),
     name: "前台",
     practiceId: practice.id,
   })

@@ -3,6 +3,9 @@ export default function HomePage() {
     <main style={{ fontFamily: "sans-serif", padding: "2rem" }}>
       <h1>OpenVPM</h1>
       <p>诊所应用已启动。</p>
+      <p>
+        <a href="/login">登录</a>
+      </p>
     </main>
   );
 }

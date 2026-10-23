@@ -18,7 +18,9 @@
     "postgres": "^3.4.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.0",
     "@types/node": "^20.19.0",
+    "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.0",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.23.12",
