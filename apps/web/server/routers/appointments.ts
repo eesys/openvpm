@@ -1,6 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, gt, gte, isNull, lt, lte, notInArray, sql } from "drizzle-orm";
-import { appointments, clients, patients, users } from "@openpims/db";
+import {
+  appointmentStatusValues,
+  appointments,
+  clients,
+  patients,
+  users,
+} from "@openpims/db";
 import { z } from "zod";
 import { createRouter, protectedProcedure, requireRole } from "../trpc";
 
@@ -272,6 +278,117 @@ export const appointmentsRouter = createRouter({
       return appointment;
     });
   }),
+
+  updateStatus: protectedProcedure
+    .use(requireRole("admin", "veterinarian", "technician", "front_desk"))
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        status: z.enum(appointmentStatusValues),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.status === "checked_out") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Review and complete the visit closeout before checking out this appointment.",
+        });
+      }
+
+      return ctx.db.transaction(async (tx) => {
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext(${ctx.practiceId}))`,
+        );
+        const [current] = await tx
+          .select({
+            id: appointments.id,
+            status: appointments.status,
+            patientId: appointments.patientId,
+            clientId: appointments.clientId,
+            activePatientId: patients.id,
+            activeClientId: clients.id,
+          })
+          .from(appointments)
+          .leftJoin(
+            patients,
+            and(
+              eq(patients.id, appointments.patientId),
+              eq(patients.clientId, appointments.clientId),
+              eq(patients.practiceId, ctx.practiceId),
+              eq(patients.status, "active"),
+              isNull(patients.deletedAt),
+            ),
+          )
+          .leftJoin(
+            clients,
+            and(
+              eq(clients.id, appointments.clientId),
+              eq(clients.practiceId, ctx.practiceId),
+              isNull(clients.deletedAt),
+            ),
+          )
+          .where(
+            and(
+              eq(appointments.id, input.id),
+              eq(appointments.practiceId, ctx.practiceId),
+              isNull(appointments.deletedAt),
+            ),
+          )
+          .limit(1);
+        if (!current) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Appointment not found",
+          });
+        }
+
+        const allowed: Record<string, readonly string[]> = {
+          scheduled: ["checked_in"],
+          confirmed: ["checked_in"],
+          checked_in: ["in_exam"],
+        };
+        if (!allowed[current.status]?.includes(input.status)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Cannot change appointment status from ${current.status} to ${input.status}.`,
+          });
+        }
+        if (
+          input.status === "in_exam" &&
+          (!current.patientId ||
+            !current.clientId ||
+            current.activePatientId !== current.patientId ||
+            current.activeClientId !== current.clientId)
+        ) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "Attach an active patient and matching client before starting the exam.",
+          });
+        }
+
+        const [updated] = await tx
+          .update(appointments)
+          .set({ status: input.status })
+          .where(
+            and(
+              eq(appointments.id, input.id),
+              eq(appointments.practiceId, ctx.practiceId),
+              eq(appointments.status, current.status),
+              isNull(appointments.deletedAt),
+            ),
+          )
+          .returning();
+        if (!updated) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Appointment changed. Refresh and try again.",
+          });
+        }
+        return updated;
+      });
+    }),
 
   delete: protectedProcedure
     .use(requireRole("admin", "veterinarian", "technician", "front_desk"))

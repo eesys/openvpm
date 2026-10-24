@@ -241,7 +241,11 @@ export default function SchedulePage() {
               <a href={`/patients/${selected.patientId}`}>宠物档案</a>
             </p>
           ) : null}
+          <p>
+            <a href={`/encounters/${selected.id}`}>打开就诊</a>
+          </p>
           <p>{selected.notes || "没有备注"}</p>
+          {["scheduled", "confirmed", "cancelled", "no_show"].includes(selected.status) ? (
           <form onSubmit={onCancel} style={{ display: "grid", gap: "0.75rem", maxWidth: "24rem" }}>
             <label>
               取消原因
@@ -249,6 +253,7 @@ export default function SchedulePage() {
             </label>
             <button type="submit">取消预约</button>
           </form>
+          ) : null}
         </section>
       ) : null}
     </main>
