@@ -13,6 +13,8 @@ export default function HomePage() {
         <a href="/billing">账单</a>
         {" · "}
         <a href="/inventory">库存</a>
+        {" · "}
+        <a href="/whiteboard">白板</a>
       </p>
     </main>
   );
