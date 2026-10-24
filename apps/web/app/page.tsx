@@ -5,6 +5,8 @@ export default function HomePage() {
       <p>诊所应用已启动。</p>
       <p>
         <a href="/login">登录</a>
+        {" · "}
+        <a href="/clients">客户</a>
       </p>
     </main>
   );

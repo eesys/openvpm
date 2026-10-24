@@ -14,10 +14,32 @@ const requireSession = t.middleware(({ ctx, next }) => {
   if (!ctx.session) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
-  return next({ ctx: { session: ctx.session } });
+  return next({
+    ctx: {
+      session: ctx.session,
+      practiceId: ctx.session.user.practiceId,
+    },
+  });
 });
 
 export const protectedProcedure = t.procedure.use(requireSession);
+
+type StaffRole =
+  | "admin"
+  | "veterinarian"
+  | "technician"
+  | "front_desk"
+  | "viewer";
+
+export function requireRole(...roles: StaffRole[]) {
+  return t.middleware(({ ctx, next }) => {
+    const role = ctx.session?.user.role;
+    if (!role || !roles.includes(role)) {
+      throw new TRPCError({ code: "FORBIDDEN" });
+    }
+    return next();
+  });
+}
 
 export type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
 
