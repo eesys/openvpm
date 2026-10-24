@@ -4,7 +4,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { practices, webhooks } from "@openpims/db";
 import { z } from "zod";
 import { createRouter, protectedProcedure, requireRole } from "../trpc";
-import { isWebhookDeliveryUrl, WEBHOOK_URL_MAX_LENGTH } from "../webhook-dispatch";
+import { isWebhookDeliveryUrl, WEBHOOK_URL_MAX_LENGTH } from "@/lib/webhook-urls";
 
 const webhookEventValues = ["appointment.created"] as const;
 

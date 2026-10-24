@@ -8,8 +8,11 @@ import {
   users,
 } from "@openpims/db";
 import { z } from "zod";
+import {
+  appointmentCreatedWebhookPayload,
+  dispatchAppointmentWebhookAfterCommit,
+} from "@/lib/appointment-webhooks";
 import { createRouter, protectedProcedure, requireRole } from "../trpc";
-import { dispatchAppointmentCreated } from "../webhook-dispatch";
 
 const DURATION_MIN_MINUTES = 5;
 const DURATION_MAX_MINUTES = 480;
@@ -278,7 +281,12 @@ export const appointmentsRouter = createRouter({
       }
       return appointment;
     });
-    await dispatchAppointmentCreated(ctx.practiceId, appointment);
+    await dispatchAppointmentWebhookAfterCommit(
+      ctx,
+      ctx.practiceId,
+      "appointment.created",
+      appointmentCreatedWebhookPayload(appointment, "dashboard"),
+    );
     return appointment;
   }),
 
