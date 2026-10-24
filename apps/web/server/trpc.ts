@@ -1,9 +1,11 @@
 import { TRPCError, initTRPC } from "@trpc/server";
+import { createHash } from "node:crypto";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@openpims/db/client";
-import { practices, sessions, users } from "@openpims/db";
+import { clients, portalSessions, practices, sessions, users } from "@openpims/db";
 
 export const SESSION_COOKIE = "session_token";
+export const PORTAL_SESSION_COOKIE = "portal_session";
 
 const t = initTRPC.context<TRPCContext>().create();
 
@@ -23,6 +25,17 @@ const requireSession = t.middleware(({ ctx, next }) => {
 });
 
 export const protectedProcedure = t.procedure.use(requireSession);
+
+const requirePortalSession = t.middleware(async ({ ctx, next }) => {
+  const token = readCookie(ctx.req.headers.get("cookie"), PORTAL_SESSION_COOKIE);
+  const portalClient = token ? await portalClientFromToken(token) : null;
+  if (!portalClient) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  return next({ ctx: { portalClient } });
+});
+
+export const portalProcedure = t.procedure.use(requirePortalSession);
 
 type StaffRole =
   | "admin"
@@ -58,10 +71,14 @@ export async function createTRPCContext(opts: {
 }
 
 export function readSessionToken(cookieHeader: string | null): string | null {
+  return readCookie(cookieHeader, SESSION_COOKIE);
+}
+
+function readCookie(cookieHeader: string | null, cookieName: string): string | null {
   if (!cookieHeader) return null;
   for (const part of cookieHeader.split(";")) {
     const [name, ...rest] = part.trim().split("=");
-    if (name === SESSION_COOKIE) {
+    if (name === cookieName) {
       const value = rest.join("=");
       return value || null;
     }
@@ -96,4 +113,30 @@ async function sessionFromToken(token: string) {
     .limit(1);
 
   return row ? { user: row } : null;
+}
+
+async function portalClientFromToken(token: string) {
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const [row] = await db
+    .select({
+      id: clients.id,
+      practiceId: clients.practiceId,
+      firstName: clients.firstName,
+      lastName: clients.lastName,
+    })
+    .from(portalSessions)
+    .innerJoin(clients, eq(clients.id, portalSessions.clientId))
+    .innerJoin(practices, eq(practices.id, portalSessions.practiceId))
+    .where(
+      and(
+        eq(portalSessions.tokenHash, tokenHash),
+        eq(clients.practiceId, portalSessions.practiceId),
+        gt(portalSessions.expiresAt, new Date()),
+        isNull(portalSessions.revokedAt),
+        isNull(clients.deletedAt),
+        isNull(practices.deletedAt),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
 }

@@ -50,6 +50,13 @@
       "when": 1792817742196,
       "tag": "0006_products",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792823878139,
+      "tag": "0007_portal_sessions",
+      "breakpoints": true
     }
   ]
 }

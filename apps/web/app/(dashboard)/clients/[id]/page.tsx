@@ -36,6 +36,7 @@ export default function ClientDetailPage() {
   const [firstName, setFirstName] = useState("");
   const [petName, setPetName] = useState("");
   const [species, setSpecies] = useState<(typeof speciesValues)[number]>("canine");
+  const [portalLink, setPortalLink] = useState("");
 
   async function load() {
     const result = await trpc<ClientDetail>("clients.getById", { id: params.id });
@@ -55,6 +56,20 @@ export default function ClientDetailPage() {
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "保存失败");
+    }
+  }
+
+  async function onPortalLink() {
+    setMessage("");
+    try {
+      const result = await trpc<{ accessToken: string }>(
+        "clients.rotatePortalAccessToken",
+        { id: params.id },
+        "POST",
+      );
+      setPortalLink(`/portal/access/${result.accessToken}`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "门户链接没有生成");
     }
   }
 
@@ -88,6 +103,16 @@ export default function ClientDetailPage() {
       </p>
       <h1>{`${client.lastName}${client.firstName}`}</h1>
       <p>{client.phone ?? "没有电话"}</p>
+      <p>
+        <button type="button" onClick={onPortalLink}>
+          生成门户链接
+        </button>
+      </p>
+      {portalLink ? (
+        <p>
+          一次性链接：<a href={portalLink}>{portalLink}</a>
+        </p>
+      ) : null}
       <form onSubmit={onRename} style={{ display: "flex", gap: "0.5rem" }}>
         <label>
           名
