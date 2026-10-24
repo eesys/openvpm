@@ -36,6 +36,13 @@
       "when": 1792811292607,
       "tag": "0004_soap_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792813858637,
+      "tag": "0005_visit_invoice",
+      "breakpoints": true
     }
   ]
 }

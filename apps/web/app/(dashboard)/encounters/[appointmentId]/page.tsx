@@ -45,6 +45,7 @@ export default function EncounterPage() {
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [role, setRole] = useState("");
   const [note, setNote] = useState<SoapNote | null>(null);
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
   async function load() {
@@ -54,6 +55,11 @@ export default function EncounterPage() {
     ]);
     setAppointment(current);
     setRole(me.role);
+    const invoiceList = await trpc<{ items: Array<{ id: string }> }>("billing.listInvoices", {
+      appointmentId: current.id,
+      limit: 1,
+    });
+    setInvoiceId(invoiceList.items[0]?.id ?? null);
     if (!current.patientId) {
       setNote(null);
       return;
@@ -90,6 +96,7 @@ export default function EncounterPage() {
 
   const next = nextStatus[appointment.status];
   const canWriteSoap = role === "admin" || role === "veterinarian";
+  const canBill = role === "admin" || role === "front_desk";
 
   return (
     <main style={{ fontFamily: "sans-serif", padding: "2rem" }}>
@@ -112,6 +119,15 @@ export default function EncounterPage() {
         </p>
       ) : null}
       {next ? <button type="button" onClick={onAdvance}>{next.label}</button> : null}
+      {appointment.status === "in_exam" && canBill ? (
+        <p>
+          {invoiceId ? (
+            <a href={`/billing?expand=${invoiceId}`}>查看账单</a>
+          ) : (
+            <a href={`/billing/new?appointmentId=${appointment.id}`}>开账单</a>
+          )}
+        </p>
+      ) : null}
       {appointment.status === "in_exam" && appointment.patientId && canWriteSoap ? (
         <p>
           <a href={`/records/new-soap/${appointment.patientId}?appointmentId=${appointment.id}`}>

@@ -9,6 +9,8 @@ export default function HomePage() {
         <a href="/clients">客户</a>
         {" · "}
         <a href="/schedule">日程</a>
+        {" · "}
+        <a href="/billing">账单</a>
       </p>
     </main>
   );
