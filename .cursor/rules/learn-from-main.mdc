@@ -10,4 +10,4 @@ alwaysApply: true
 - 先读这些文件，复现其中已经存在的表、字段和流程。
 - 这些文件里没有的表、字段或流程，不要自行添加。
 - 员工属于诊所的方式在 `packages/db/schema/users.ts`：`users.practiceId`、`role`、`isVeterinarian`。没有 memberships 表。
-- 用户没有明确要求时，不要提交。
+- 不要自动提交。`LEARNING.md` 里的「一步一个提交」，以及「继续下一轮迭代」，都不是提交请求。只有用户在当条消息里明确说提交时才提交。

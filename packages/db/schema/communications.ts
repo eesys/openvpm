@@ -106,9 +106,36 @@ export const communicationsRelations = relations(communications, ({ one }) => ({
   }),
 }));
 
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    ...tenantColumns(() => practices.id),
+    keyPrefix: varchar("key_prefix", { length: 16 }),
+    keyHash: varchar("key_hash", { length: 255 }).notNull(),
+    name: varchar("name", { length: 128 }).notNull(),
+    scopes: jsonb("scopes").$type<string[]>().notNull().default([]),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  },
+  (table) => ({
+    prefixIdx: index("api_keys_prefix_idx").on(table.keyPrefix),
+    practiceCreatedIdx: index("api_keys_practice_created_idx").on(
+      table.practiceId,
+      table.deletedAt,
+      table.createdAt,
+    ),
+  }),
+);
+
 export const webhooksRelations = relations(webhooks, ({ one }) => ({
   practice: one(practices, {
     fields: [webhooks.practiceId],
+    references: [practices.id],
+  }),
+}));
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  practice: one(practices, {
+    fields: [apiKeys.practiceId],
     references: [practices.id],
   }),
 }));

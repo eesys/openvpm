@@ -1,4 +1,5 @@
 import { createRouter } from "../trpc";
+import { apiKeysRouter } from "./api-keys";
 import { appointmentsRouter } from "./appointments";
 import { authRouter } from "./auth";
 import { clientsRouter } from "./clients";
@@ -13,6 +14,7 @@ import { whiteboardRouter } from "./whiteboard";
 
 export const appRouter = createRouter({
   auth: authRouter,
+  apiKeys: apiKeysRouter,
   clients: clientsRouter,
   communications: communicationsRouter,
   patients: patientsRouter,
