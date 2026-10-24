@@ -2,6 +2,7 @@ import { createRouter } from "../trpc";
 import { appointmentsRouter } from "./appointments";
 import { authRouter } from "./auth";
 import { clientsRouter } from "./clients";
+import { communicationsRouter } from "./communications";
 import { patientsRouter } from "./patients";
 import { billingRouter } from "./billing";
 import { inventoryRouter } from "./inventory";
@@ -12,6 +13,7 @@ import { whiteboardRouter } from "./whiteboard";
 export const appRouter = createRouter({
   auth: authRouter,
   clients: clientsRouter,
+  communications: communicationsRouter,
   patients: patientsRouter,
   appointments: appointmentsRouter,
   records: recordsRouter,
