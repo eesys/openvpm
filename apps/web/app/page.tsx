@@ -15,6 +15,8 @@ export default function HomePage() {
         <a href="/inventory">库存</a>
         {" · "}
         <a href="/whiteboard">白板</a>
+        {" · "}
+        <a href="/webhooks">Webhook</a>
       </p>
     </main>
   );

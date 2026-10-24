@@ -8,6 +8,7 @@ import { billingRouter } from "./billing";
 import { inventoryRouter } from "./inventory";
 import { recordsRouter } from "./records";
 import { portalRouter } from "./portal";
+import { webhooksRouter } from "./webhooks";
 import { whiteboardRouter } from "./whiteboard";
 
 export const appRouter = createRouter({
@@ -20,6 +21,7 @@ export const appRouter = createRouter({
   billing: billingRouter,
   inventory: inventoryRouter,
   whiteboard: whiteboardRouter,
+  webhooks: webhooksRouter,
   portal: portalRouter,
 });
 

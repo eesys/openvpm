@@ -9,6 +9,7 @@ import {
 } from "@openpims/db";
 import { z } from "zod";
 import { createRouter, protectedProcedure, requireRole } from "../trpc";
+import { dispatchAppointmentCreated } from "../webhook-dispatch";
 
 const DURATION_MIN_MINUTES = 5;
 const DURATION_MAX_MINUTES = 480;
@@ -192,7 +193,7 @@ export const appointmentsRouter = createRouter({
   create: staffBook.input(createInput).mutation(async ({ ctx, input }) => {
     const { start, end } = timeRange(input.startTime, input.endTime);
 
-    return ctx.db.transaction(async (tx) => {
+    const appointment = await ctx.db.transaction(async (tx) => {
       await tx.execute(
         sql`select pg_advisory_xact_lock(hashtext(${ctx.practiceId}))`,
       );
@@ -277,6 +278,8 @@ export const appointmentsRouter = createRouter({
       }
       return appointment;
     });
+    await dispatchAppointmentCreated(ctx.practiceId, appointment);
+    return appointment;
   }),
 
   updateStatus: protectedProcedure
