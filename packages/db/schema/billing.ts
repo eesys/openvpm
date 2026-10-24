@@ -1,8 +1,10 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   index,
+  integer,
   numeric,
   pgEnum,
   pgTable,
@@ -140,5 +142,48 @@ export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
   invoice: one(invoices, {
     fields: [invoiceItems.invoiceId],
     references: [invoices.id],
+  }),
+}));
+
+export const products = pgTable(
+  "products",
+  {
+    ...tenantColumns(() => practices.id),
+    name: varchar("name", { length: 255 }).notNull(),
+    unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull(),
+    taxable: boolean("taxable").notNull().default(true),
+    inventoryTracked: boolean("inventory_tracked").notNull().default(true),
+    stockQuantity: numeric("stock_quantity", { precision: 13, scale: 3, mode: "number" })
+      .notNull()
+      .default(0),
+    reorderPoint: integer("reorder_point").default(10),
+  },
+  (table) => ({
+    practiceIdx: index("products_practice_idx").on(table.practiceId, table.deletedAt),
+    practiceNameIdx: index("products_practice_name_idx").on(
+      table.practiceId,
+      table.deletedAt,
+      table.name,
+    ),
+    stockAlertIdx: index("products_stock_alert_idx").on(
+      table.practiceId,
+      table.deletedAt,
+      table.stockQuantity,
+    ),
+    practiceIdUq: uniqueIndex("products_practice_id_uq").on(table.practiceId, table.id),
+    inventoryTrackingCheck: check(
+      "products_inventory_tracking_check",
+      sql`${table.inventoryTracked} or (
+        ${table.stockQuantity} = 0
+        and ${table.reorderPoint} is null
+      )`,
+    ),
+  }),
+);
+
+export const productsRelations = relations(products, ({ one }) => ({
+  practice: one(practices, {
+    fields: [products.practiceId],
+    references: [practices.id],
   }),
 }));

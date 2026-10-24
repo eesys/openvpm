@@ -11,6 +11,8 @@ export default function HomePage() {
         <a href="/schedule">日程</a>
         {" · "}
         <a href="/billing">账单</a>
+        {" · "}
+        <a href="/inventory">库存</a>
       </p>
     </main>
   );

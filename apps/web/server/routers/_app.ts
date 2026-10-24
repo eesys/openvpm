@@ -4,6 +4,7 @@ import { authRouter } from "./auth";
 import { clientsRouter } from "./clients";
 import { patientsRouter } from "./patients";
 import { billingRouter } from "./billing";
+import { inventoryRouter } from "./inventory";
 import { recordsRouter } from "./records";
 
 export const appRouter = createRouter({
@@ -13,6 +14,7 @@ export const appRouter = createRouter({
   appointments: appointmentsRouter,
   records: recordsRouter,
   billing: billingRouter,
+  inventory: inventoryRouter,
 });
 
 export type AppRouter = typeof appRouter;
