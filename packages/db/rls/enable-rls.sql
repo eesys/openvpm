@@ -42,7 +42,9 @@ DECLARE
     'products',
     'soap_notes',
     'users',
-    'webhooks'
+    'webhooks',
+    'locations',
+    'location_messaging'
   ];
 BEGIN
   FOREACH t IN ARRAY tbls LOOP

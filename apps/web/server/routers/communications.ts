@@ -9,6 +9,9 @@ import {
   practices,
 } from "@openpims/db";
 import { z } from "zod";
+import { normalizeE164 } from "@/lib/messaging/phone";
+import { isQuietHours } from "@/lib/messaging/reminders";
+import { sendSms } from "@/lib/sms";
 import { createRouter, protectedProcedure, requireRole } from "../trpc";
 
 const CONTENT_MAX = 5000;
@@ -57,6 +60,129 @@ function recordedStatus(input: z.infer<typeof createInput>) {
     return input.channel === "portal" ? ("delivered" as const) : ("sent" as const);
   }
   return "pending" as const;
+}
+
+const recordedCommunication = {
+  id: communications.id,
+  channel: communications.channel,
+  direction: communications.direction,
+  subject: communications.subject,
+  content: communications.content,
+  status: communications.status,
+  readAt: communications.readAt,
+  createdAt: communications.createdAt,
+};
+
+async function sendOutboundSms(
+  ctx: {
+    db: typeof import("@openpims/db/client").db;
+    practiceId: string;
+    session: { user: { id: string } };
+  },
+  input: z.infer<typeof createInput>,
+  subject: string | undefined,
+) {
+  const [client] = await ctx.db
+    .select({ phone: clients.phone, smsConsent: clients.smsConsent })
+    .from(clients)
+    .where(
+      and(
+        eq(clients.id, input.clientId),
+        eq(clients.practiceId, ctx.practiceId),
+        isNull(clients.deletedAt),
+      ),
+    )
+    .limit(1);
+  if (!client?.phone) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Client does not have a phone number on file",
+    });
+  }
+  if (!client.smsConsent) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Client has not consented to SMS messages",
+    });
+  }
+
+  const [practice] = await ctx.db
+    .select({ timezone: practices.timezone })
+    .from(practices)
+    .where(and(eq(practices.id, ctx.practiceId), isNull(practices.deletedAt)))
+    .limit(1);
+  if (!practice) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Practice not found" });
+  }
+  if (isQuietHours(new Date(), practice.timezone)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "SMS sending is blocked during quiet hours",
+    });
+  }
+
+  const to = normalizeE164(client.phone);
+  if (!to) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Client phone number must be a valid E.164 or US/CA number",
+    });
+  }
+
+  const [pending] = await ctx.db
+    .insert(communications)
+    .values({
+      practiceId: ctx.practiceId,
+      clientId: input.clientId,
+      channel: "sms",
+      direction: "outbound",
+      subject,
+      content: input.content,
+      status: "pending",
+      assignedTo: ctx.session.user.id,
+    })
+    .returning(recordedCommunication);
+  if (!pending) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Communication could not be recorded",
+    });
+  }
+
+  const delivery = await sendSms({
+    to,
+    body: input.content,
+  });
+  const [updated] = await ctx.db
+    .update(communications)
+    .set({
+      status: delivery.success ? "sent" : "failed",
+      providerMessageId: delivery.success ? delivery.sid : null,
+    })
+    .where(
+      and(
+        eq(communications.id, pending.id),
+        eq(communications.practiceId, ctx.practiceId),
+        eq(communications.status, "pending"),
+        isNull(communications.deletedAt),
+      ),
+    )
+    .returning(recordedCommunication);
+  if (!updated) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: delivery.success
+        ? "Message was delivered, but the inbox status could not be updated. Refresh before sending again."
+        : delivery.error,
+    });
+  }
+  if (!delivery.success) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: delivery.error,
+    });
+  }
+  return updated;
 }
 
 export const communicationsRouter = createRouter({
@@ -134,6 +260,11 @@ export const communicationsRouter = createRouter({
       input.channel === "email"
         ? input.subject || `Message from ${practiceName}`
         : input.subject;
+
+    if (input.direction === "outbound" && input.channel === "sms") {
+      return sendOutboundSms(ctx, input, subject);
+    }
+
     const status = recordedStatus(input);
 
     const [communication] = await ctx.db

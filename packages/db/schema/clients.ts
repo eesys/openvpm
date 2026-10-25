@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   index,
   pgEnum,
@@ -33,6 +34,7 @@ export const clients = pgTable(
     preferredContactMethod: contactMethod("preferred_contact_method").default(
       "phone",
     ),
+    smsConsent: boolean("sms_consent").notNull().default(false),
     notes: text("notes"),
     accessToken: varchar("access_token", { length: 64 }).unique(),
     portalAccessTokenExpiresAt: timestamp("portal_access_token_expires_at", {

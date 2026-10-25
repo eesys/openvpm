@@ -26,6 +26,7 @@ type ClientDetail = {
   firstName: string;
   lastName: string;
   phone: string | null;
+  smsConsent: boolean;
   patients: Patient[];
 };
 type Communication = {
@@ -90,6 +91,8 @@ export default function ClientDetailPage() {
   const [client, setClient] = useState<ClientDetail | null>(null);
   const [message, setMessage] = useState("");
   const [firstName, setFirstName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [smsConsent, setSmsConsent] = useState(false);
   const [petName, setPetName] = useState("");
   const [species, setSpecies] = useState<(typeof speciesValues)[number]>("canine");
   const [portalLink, setPortalLink] = useState("");
@@ -104,6 +107,8 @@ export default function ClientDetailPage() {
     const result = await trpc<ClientDetail>("clients.getById", { id: params.id });
     setClient(result);
     setFirstName(result.firstName);
+    setPhone(result.phone ?? "");
+    setSmsConsent(result.smsConsent);
     const log = await trpc<{ timezone: string; items: Communication[] }>(
       "communications.getByClient",
       { clientId: params.id },
@@ -161,7 +166,24 @@ export default function ClientDetailPage() {
       await load();
       setMessage("已记下");
     } catch (error) {
+      await load().catch(() => undefined);
       setMessage(error instanceof Error ? error.message : "没有记下");
+    }
+  }
+
+  async function onSaveSms(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+    try {
+      await trpc(
+        "clients.update",
+        { id: params.id, phone, smsConsent },
+        "POST",
+      );
+      await load();
+      setMessage("短信设置已保存");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "短信设置没有保存");
     }
   }
 
@@ -211,6 +233,22 @@ export default function ClientDetailPage() {
           <input value={firstName} onChange={(event) => setFirstName(event.target.value)} />
         </label>
         <button type="submit">保存</button>
+      </form>
+      <h2>短信</h2>
+      <form onSubmit={onSaveSms} style={{ display: "grid", gap: "0.75rem", maxWidth: "24rem" }}>
+        <label>
+          客户电话
+          <input value={phone} onChange={(event) => setPhone(event.target.value)} />
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={smsConsent}
+            onChange={(event) => setSmsConsent(event.target.checked)}
+          />{" "}
+          客户同意接收短信
+        </label>
+        <button type="submit">保存短信设置</button>
       </form>
       <h2>宠物</h2>
       <ul>

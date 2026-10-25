@@ -8,3 +8,4 @@ export * from "./scheduling";
 export * from "./clinical";
 export * from "./billing";
 export * from "./communications";
+export * from "./messaging";

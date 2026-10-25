@@ -78,6 +78,20 @@
       "when": 1792837338260,
       "tag": "0010_api_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792891345945,
+      "tag": "0011_sms",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792893561180,
+      "tag": "0012_tencent_sms",
+      "breakpoints": true
     }
   ]
 }

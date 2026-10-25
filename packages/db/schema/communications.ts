@@ -42,6 +42,7 @@ export const communications = pgTable(
     status: commStatus("status").notNull().default("pending"),
     assignedTo: uuid("assigned_to").references(() => users.id),
     readAt: timestamp("read_at", { withTimezone: true }),
+    providerMessageId: varchar("provider_message_id", { length: 255 }),
   },
   (table) => ({
     practiceIdUq: uniqueIndex("communications_practice_id_uq").on(

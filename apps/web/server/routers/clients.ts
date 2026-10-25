@@ -219,6 +219,7 @@ export const clientsRouter = createRouter({
         emergencyPhone: clientFields.emergencyPhone,
         preferredContactMethod: clientFields.preferredContactMethod,
         notes: clientFields.notes,
+        smsConsent: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
