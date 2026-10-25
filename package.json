@@ -5,7 +5,9 @@
     "dev": "pnpm --filter @openpims/web dev",
     "db:up": "docker compose -f docker/docker-compose.yml up -d --wait",
     "db:migrate": "pnpm --filter @openpims/db db:migrate",
-    "db:check": "pnpm --filter @openpims/db db:check"
+    "db:check": "pnpm --filter @openpims/db db:check",
+    "db:rls": "pnpm --filter @openpims/db db:rls",
+    "db:rls:test": "pnpm --filter @openpims/db db:rls:test"
   },
   "packageManager": "pnpm@9.15.0",
   "engines": {

@@ -5,6 +5,7 @@ import { db } from "@openpims/db/client";
 import { toApiClient } from "@/lib/compat/openvpm";
 import { paginated, parsePagination } from "@/lib/compat/shared/pagination";
 import { authenticateApiKey } from "@/lib/api-auth";
+import { withTenant } from "@/lib/tenant-db";
 
 export const dynamic = "force-dynamic";
 
@@ -18,17 +19,19 @@ export async function GET(req: Request) {
       eq(clients.practiceId, auth.ctx.practiceId),
       isNull(clients.deletedAt),
     );
-    const [rows, countResult] = await Promise.all([
-      db
-        .select()
-        .from(clients)
-        .where(where)
-        .orderBy(desc(clients.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db.select({ count: sql<number>`count(*)` }).from(clients).where(where),
-    ]);
-    const total = Number(countResult[0]?.count ?? 0);
+    const { rows, total } = await withTenant(db, auth.ctx.practiceId, async (tx) => {
+      const [found, countResult] = await Promise.all([
+        tx
+          .select()
+          .from(clients)
+          .where(where)
+          .orderBy(desc(clients.createdAt))
+          .limit(limit)
+          .offset(offset),
+        tx.select({ count: sql<number>`count(*)` }).from(clients).where(where),
+      ]);
+      return { rows: found, total: Number(countResult[0]?.count ?? 0) };
+    });
     return NextResponse.json(paginated(rows.map(toApiClient), { limit, offset }, total));
   } catch (error) {
     console.error("GET /api/v1/clients failed", error);

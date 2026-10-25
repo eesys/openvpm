@@ -4,6 +4,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { apiKeys, practices } from "@openpims/db";
 import { db } from "@openpims/db/client";
+import { withSystem } from "@/lib/tenant-db";
 
 export const API_KEY_PREFIX = "ovpm_";
 const LOOKUP_PREFIX_LENGTH = 12;
@@ -88,10 +89,12 @@ export async function authenticateApiKey(
   const prefix = raw.slice(0, LOOKUP_PREFIX_LENGTH);
   let candidates;
   try {
-    candidates = await db
-      .select()
-      .from(apiKeys)
-      .where(and(eq(apiKeys.keyPrefix, prefix), isNull(apiKeys.deletedAt)));
+    candidates = await withSystem(db, (tx) =>
+      tx
+        .select()
+        .from(apiKeys)
+        .where(and(eq(apiKeys.keyPrefix, prefix), isNull(apiKeys.deletedAt))),
+    );
   } catch (error) {
     console.error("API key lookup failed", error);
     return unauthorized("Internal error", 500);
@@ -106,11 +109,13 @@ export async function authenticateApiKey(
   }
   if (!matched) return unauthorized("Invalid API key.", 401);
 
-  const [practice] = await db
-    .select({ id: practices.id })
-    .from(practices)
-    .where(and(eq(practices.id, matched.practiceId), isNull(practices.deletedAt)))
-    .limit(1);
+  const [practice] = await withSystem(db, (tx) =>
+    tx
+      .select({ id: practices.id })
+      .from(practices)
+      .where(and(eq(practices.id, matched.practiceId), isNull(practices.deletedAt)))
+      .limit(1),
+  );
   if (!practice) return unauthorized("Invalid API key.", 401);
 
   const scopes = Array.isArray(matched.scopes) ? matched.scopes : [];
@@ -119,10 +124,12 @@ export async function authenticateApiKey(
   }
 
   try {
-    await db
-      .update(apiKeys)
-      .set({ lastUsedAt: new Date() })
-      .where(and(eq(apiKeys.id, matched.id), isNull(apiKeys.deletedAt)));
+    await withSystem(db, (tx) =>
+      tx
+        .update(apiKeys)
+        .set({ lastUsedAt: new Date() })
+        .where(and(eq(apiKeys.id, matched.id), isNull(apiKeys.deletedAt))),
+    );
   } catch (error) {
     console.error("API key lastUsedAt update failed", error);
   }

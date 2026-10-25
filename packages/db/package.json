@@ -11,6 +11,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:check": "tsx check.ts",
+    "db:rls": "tsx apply-rls.ts",
+    "db:rls:test": "tsx test-rls.ts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
