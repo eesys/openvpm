@@ -7,7 +7,7 @@
 - 先在 `main` 读该步列出的文件，用自己的话写出这一步要保住的行为，再写代码。
 - 只复现行为，不粘贴生产实现。技术栈保持一致：pnpm workspace、Next.js、tRPC、Drizzle、PostgreSQL。这样读懂的是这份仓库，而不是另一套系统。
 - 一步一个可运行行为。不要自动提交。只有用户在当条消息里明确要求提交时才提交，提交说明写明对照了 `main` 上的哪些文件。
-- 租户边界从第一张业务表就带上 `practiceId`。Stripe、AI、迁移工具留到主路径走通之后。
+- 租户边界从第一张业务表就带上 `practiceId`。AI、迁移工具留到主路径走通之后。
 
 ## 迭代顺序
 
@@ -22,3 +22,4 @@
 7. **账单。** 对照 `packages/db/schema/billing.ts` 和 billing router。这次就诊产生一张草稿发票和一条收费明细。
 8. **之后再单独立项。** 库存、白板、门户、通信、webhook、`/api/v1`、RLS。每一项仍是一次只学一个行为。
 9. **发出一条已同意的短信。** 对照 `apps/web/server/routers/communications.ts`、`apps/web/lib/sms.ts`、`apps/web/lib/messaging/`。客户有电话且同意、诊所不在静默时段时，记录先写入 pending，再变成 sent，并记下腾讯云返回的 SerialNo。`TENCENT_SMS_MODE` 在本地模拟和真实 SendSms 之间切换。邮件呼出仍停在 pending。
+10. **为一张已发送的发票发起收款。** 刷卡对照 `createCardPaymentCheckout`，走 Stripe Checkout 预授权。微信支付和支付宝支付由页面通过浏览器串口连接扫码枪，读到客户付款码后分别调用微信付款码支付和支付宝 `alipay.trade.pay`（`bar_code`）。扣款成功后把发票记为已支付。没有对应密钥时提示尚未配置。
