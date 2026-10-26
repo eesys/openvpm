@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import {
   appointments,
   clients,
@@ -10,7 +10,6 @@ import {
 } from "@openpims/db";
 import { z } from "zod";
 import { isSafeCheckoutRedirectUrl } from "@/lib/checkout-redirect";
-import { chargeCustomerPayCode, type DirectPayMethod } from "@/lib/direct-pay";
 import { appBaseUrl, createInvoiceCheckoutSession } from "@/lib/stripe-checkout";
 import { createRouter, protectedProcedure, requireRole } from "../trpc";
 
@@ -427,106 +426,5 @@ export const billingRouter = createRouter({
         });
       }
       return { url: session.url };
-    }),
-
-  chargeCustomerPayCode: staffBill
-    .input(
-      z.object({
-        invoiceId: z.string().uuid(),
-        method: z.enum(["wechat", "alipay"]),
-        authCode: z.string().trim().min(1).max(32),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const [invoice] = await ctx.db
-        .select({
-          id: invoices.id,
-          total: invoices.total,
-          paidAmount: invoices.paidAmount,
-          status: invoices.status,
-          isEstimate: invoices.isEstimate,
-        })
-        .from(invoices)
-        .innerJoin(
-          clients,
-          and(
-            eq(invoices.clientId, clients.id),
-            eq(clients.practiceId, ctx.practiceId),
-            isNull(clients.deletedAt),
-          ),
-        )
-        .where(
-          and(
-            eq(invoices.id, input.invoiceId),
-            eq(invoices.practiceId, ctx.practiceId),
-            isNull(invoices.deletedAt),
-          ),
-        )
-        .limit(1);
-      if (!invoice) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
-      }
-      if (invoice.isEstimate) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Convert the estimate to an invoice before recording payment.",
-        });
-      }
-      if (invoice.status === "void") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Cannot record payment on a void invoice.",
-        });
-      }
-      if (invoice.status === "draft") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Mark the invoice as sent before recording payment.",
-        });
-      }
-      if (invoice.status === "paid") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Invoice is already paid.",
-        });
-      }
-      const balanceCents = moneyToCents(invoice.total) - moneyToCents(invoice.paidAmount);
-      if (balanceCents <= 0) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "No balance remaining." });
-      }
-      const method: DirectPayMethod = input.method;
-      try {
-        await chargeCustomerPayCode({
-          method,
-          authCode: input.authCode,
-          amountCents: balanceCents,
-          description: "Invoice payment",
-          invoiceId: invoice.id,
-        });
-      } catch (error) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: error instanceof Error ? error.message : "Payment could not be collected.",
-        });
-      }
-      const [paid] = await ctx.db
-        .update(invoices)
-        .set({ status: "paid", paidAmount: invoice.total })
-        .where(
-          and(
-            eq(invoices.id, invoice.id),
-            eq(invoices.practiceId, ctx.practiceId),
-            inArray(invoices.status, ["sent", "overdue"]),
-            isNull(invoices.deletedAt),
-          ),
-        )
-        .returning({ id: invoices.id, status: invoices.status, paidAmount: invoices.paidAmount });
-      if (!paid) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Payment was collected, but the invoice could not be marked paid.",
-        });
-      }
-      return paid;
     }),
 });
