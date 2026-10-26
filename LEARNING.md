@@ -21,5 +21,5 @@
 6. **就诊记录。** 对照 `packages/db/schema/clinical.ts`、encounters 与 records router。一次预约写出一条 SOAP。
 7. **账单。** 对照 `packages/db/schema/billing.ts` 和 billing router。这次就诊产生一张草稿发票和一条收费明细。
 8. **之后再单独立项。** 库存、白板、门户、通信、webhook、`/api/v1`、RLS。每一项仍是一次只学一个行为。
-9. **发出一条已同意的短信。** 对照 `apps/web/server/routers/communications.ts`、`apps/web/lib/sms.ts`、`apps/web/lib/messaging/`。客户有电话且同意、诊所不在静默时段时，记录先写入 pending，再变成 sent，并记下腾讯云返回的 SerialNo。`TENCENT_SMS_MODE` 在本地模拟和真实 SendSms 之间切换。邮件呼出仍停在 pending。
-10. **为一张已发送的发票发起收款。** 刷卡对照 `createCardPaymentCheckout`，走 Stripe Checkout 预授权。微信支付和支付宝支付由页面通过浏览器串口连接扫码枪，读到客户付款码后分别调用微信付款码支付和支付宝 `alipay.trade.pay`（`bar_code`）。扣款成功后把发票记为已支付。没有对应密钥时提示尚未配置。
+9. **发出一条已同意的短信。** 对照 `apps/web/server/routers/communications.ts`、`apps/web/lib/sms.ts`、`apps/web/lib/messaging/`。客户有电话且同意、诊所不在静默时段时，记录先写入 pending，再变成 sent，并记下 provider 返回的消息 id。provider 层与 main 同构：`MESSAGING_PROVIDER` 显式指定，否则用配置了 `TELNYX_API_KEY` 的 Telnyx，都没有时落到 console 兜底（打日志不真发）。邮件呼出仍停在 pending。
+10. **为一张已发送的发票发起收款。** 对照 billing router 的 `createCardPaymentCheckout`，走 Stripe Checkout 预授权（manual capture）。没有 `STRIPE_SECRET_KEY` 时提示尚未配置。把发票回写为已支付是 main 上 Stripe webhook（checkout.session.completed）的职责，留到 webhook 那一步再补。
