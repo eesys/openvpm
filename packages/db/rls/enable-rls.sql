@@ -44,7 +44,8 @@ DECLARE
     'users',
     'webhooks',
     'locations',
-    'location_messaging'
+    'location_messaging',
+    'usage_records'
   ];
 BEGIN
   FOREACH t IN ARRAY tbls LOOP

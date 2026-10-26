@@ -4,6 +4,7 @@ import {
   index,
   pgTable,
   text,
+  timestamp,
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -20,6 +21,16 @@ export const practices = pgTable("practices", {
     .notNull()
     .default("America/New_York"),
   logoUrl: varchar("logo_url", { length: 512 }),
+  // Hosted-SaaS subscription (ignored by self-host unless HOSTED_BILLING_ENABLED).
+  // subscriptionTier is the canonical plan tier: free | cloud | enterprise.
+  subscriptionTier: varchar("subscription_tier", { length: 32 })
+    .notNull()
+    .default("free"),
+  // Stripe-style billing lifecycle: none | trialing | active | past_due | canceled.
+  billingStatus: varchar("billing_status", { length: 24 })
+    .notNull()
+    .default("none"),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
 });
 
 export const locations = pgTable(

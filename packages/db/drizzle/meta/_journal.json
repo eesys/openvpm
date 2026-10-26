@@ -92,6 +92,13 @@
       "when": 1792893561180,
       "tag": "0012_tencent_sms",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792933654492,
+      "tag": "0013_subscription_usage",
+      "breakpoints": true
     }
   ]
 }

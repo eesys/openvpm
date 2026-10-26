@@ -9,3 +9,4 @@ export * from "./clinical";
 export * from "./billing";
 export * from "./communications";
 export * from "./messaging";
+export * from "./usage";
