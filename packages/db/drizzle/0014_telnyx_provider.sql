@@ -1,0 +1,1 @@
+ALTER TABLE "location_messaging" ALTER COLUMN "provider" SET DEFAULT 'telnyx';

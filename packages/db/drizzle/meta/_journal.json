@@ -99,6 +99,13 @@
       "when": 1792933654492,
       "tag": "0013_subscription_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792988831759,
+      "tag": "0014_telnyx_provider",
+      "breakpoints": true
     }
   ]
 }

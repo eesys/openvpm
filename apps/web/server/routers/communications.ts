@@ -50,141 +50,6 @@ const createInput = z
     }
   });
 
-function recordedStatus(input: z.infer<typeof createInput>) {
-  const waitingToSend =
-    input.direction === "outbound" &&
-    (input.channel === "sms" || input.channel === "email");
-  if (waitingToSend) return "pending" as const;
-  if (input.status) return input.status;
-  if (input.direction === "outbound") {
-    return input.channel === "portal" ? ("delivered" as const) : ("sent" as const);
-  }
-  return "pending" as const;
-}
-
-const recordedCommunication = {
-  id: communications.id,
-  channel: communications.channel,
-  direction: communications.direction,
-  subject: communications.subject,
-  content: communications.content,
-  status: communications.status,
-  readAt: communications.readAt,
-  createdAt: communications.createdAt,
-};
-
-async function sendOutboundSms(
-  ctx: {
-    db: typeof import("@openpims/db/client").db;
-    practiceId: string;
-    session: { user: { id: string } };
-  },
-  input: z.infer<typeof createInput>,
-  subject: string | undefined,
-) {
-  const [client] = await ctx.db
-    .select({ phone: clients.phone, smsConsent: clients.smsConsent })
-    .from(clients)
-    .where(
-      and(
-        eq(clients.id, input.clientId),
-        eq(clients.practiceId, ctx.practiceId),
-        isNull(clients.deletedAt),
-      ),
-    )
-    .limit(1);
-  if (!client?.phone) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Client does not have a phone number on file",
-    });
-  }
-  if (!client.smsConsent) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Client has not consented to SMS messages",
-    });
-  }
-
-  const [practice] = await ctx.db
-    .select({ timezone: practices.timezone })
-    .from(practices)
-    .where(and(eq(practices.id, ctx.practiceId), isNull(practices.deletedAt)))
-    .limit(1);
-  if (!practice) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Practice not found" });
-  }
-  if (isQuietHours(new Date(), practice.timezone)) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "SMS sending is blocked during quiet hours",
-    });
-  }
-
-  const to = normalizeE164(client.phone);
-  if (!to) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Client phone number must be a valid E.164 or US/CA number",
-    });
-  }
-
-  const [pending] = await ctx.db
-    .insert(communications)
-    .values({
-      practiceId: ctx.practiceId,
-      clientId: input.clientId,
-      channel: "sms",
-      direction: "outbound",
-      subject,
-      content: input.content,
-      status: "pending",
-      assignedTo: ctx.session.user.id,
-    })
-    .returning(recordedCommunication);
-  if (!pending) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Communication could not be recorded",
-    });
-  }
-
-  const delivery = await sendSms({
-    to,
-    body: input.content,
-  });
-  const [updated] = await ctx.db
-    .update(communications)
-    .set({
-      status: delivery.success ? "sent" : "failed",
-      providerMessageId: delivery.success ? delivery.sid : null,
-    })
-    .where(
-      and(
-        eq(communications.id, pending.id),
-        eq(communications.practiceId, ctx.practiceId),
-        eq(communications.status, "pending"),
-        isNull(communications.deletedAt),
-      ),
-    )
-    .returning(recordedCommunication);
-  if (!updated) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: delivery.success
-        ? "Message was delivered, but the inbox status could not be updated. Refresh before sending again."
-        : delivery.error,
-    });
-  }
-  if (!delivery.success) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: delivery.error,
-    });
-  }
-  return updated;
-}
-
 export const communicationsRouter = createRouter({
   getByClient: protectedProcedure
     .input(z.object({ clientId: z.string().uuid() }))
@@ -232,7 +97,11 @@ export const communicationsRouter = createRouter({
 
   create: staffWrite.input(createInput).mutation(async ({ ctx, input }) => {
     const [client] = await ctx.db
-      .select({ id: clients.id })
+      .select({
+        id: clients.id,
+        phone: clients.phone,
+        smsConsent: clients.smsConsent,
+      })
       .from(clients)
       .where(
         and(
@@ -247,7 +116,7 @@ export const communicationsRouter = createRouter({
     }
 
     const [practice] = await ctx.db
-      .select({ name: practices.name })
+      .select({ name: practices.name, timezone: practices.timezone })
       .from(practices)
       .where(and(eq(practices.id, ctx.practiceId), isNull(practices.deletedAt)))
       .limit(1);
@@ -262,10 +131,100 @@ export const communicationsRouter = createRouter({
         : input.subject;
 
     if (input.direction === "outbound" && input.channel === "sms") {
-      return sendOutboundSms(ctx, input, subject);
+      if (!client.phone) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Client does not have a phone number on file",
+        });
+      }
+      if (!client.smsConsent) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Client has not consented to SMS messages",
+        });
+      }
+      if (isQuietHours(new Date(), practice.timezone)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "SMS sending is blocked during quiet hours",
+        });
+      }
+      const to = normalizeE164(client.phone);
+      if (!to) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Client phone number must be a valid E.164 or US/CA number",
+        });
+      }
+
+      const [pending] = await ctx.db
+        .insert(communications)
+        .values({
+          practiceId: ctx.practiceId,
+          clientId: input.clientId,
+          channel: "sms",
+          direction: "outbound",
+          subject,
+          content: input.content,
+          status: "pending",
+          assignedTo: ctx.session.user.id,
+        })
+        .returning();
+      if (!pending) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Communication could not be recorded",
+        });
+      }
+
+      const delivery = await sendSms({
+        to,
+        body: input.content,
+        practiceId: ctx.practiceId,
+      });
+      const [updated] = await ctx.db
+        .update(communications)
+        .set({
+          status: delivery.success ? "sent" : "failed",
+          providerMessageId: delivery.success ? delivery.sid : null,
+        })
+        .where(
+          and(
+            eq(communications.id, pending.id),
+            eq(communications.practiceId, ctx.practiceId),
+            eq(communications.status, "pending"),
+            isNull(communications.deletedAt),
+          ),
+        )
+        .returning();
+      if (!updated) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: delivery.success
+            ? "Message was delivered, but the inbox status could not be updated. Refresh before sending again."
+            : delivery.error,
+        });
+      }
+      if (!delivery.success) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: delivery.error,
+        });
+      }
+      return updated;
     }
 
-    const status = recordedStatus(input);
+    // Outbound email stays pending until an email channel ships; every other
+    // recorded channel takes the provided or implied status.
+    const status =
+      input.direction === "outbound" && input.channel === "email"
+        ? ("pending" as const)
+        : (input.status ??
+          (input.direction === "outbound"
+            ? input.channel === "portal"
+              ? ("delivered" as const)
+              : ("sent" as const)
+            : ("pending" as const)));
 
     const [communication] = await ctx.db
       .insert(communications)
@@ -280,16 +239,7 @@ export const communicationsRouter = createRouter({
         assignedTo: ctx.session.user.id,
         readAt: status === "read" ? new Date() : undefined,
       })
-      .returning({
-        id: communications.id,
-        channel: communications.channel,
-        direction: communications.direction,
-        subject: communications.subject,
-        content: communications.content,
-        status: communications.status,
-        readAt: communications.readAt,
-        createdAt: communications.createdAt,
-      });
+      .returning();
     if (!communication) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",

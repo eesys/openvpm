@@ -33,7 +33,7 @@ export const locationMessaging = pgTable(
       .notNull()
       .references(() => locations.id)
       .unique(),
-    provider: varchar("provider", { length: 16 }).notNull().default("tencent"),
+    provider: varchar("provider", { length: 16 }).notNull().default("telnyx"),
     senderE164: varchar("sender_e164", { length: 16 }),
     registrationStatus: messagingRegistrationStatus("registration_status")
       .notNull()
