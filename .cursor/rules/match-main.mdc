@@ -1,0 +1,12 @@
+---
+description: The learn branch must end with the same code as openvpm main
+alwaysApply: true
+---
+
+# 最终与 main 一致
+
+`learn/from-scratch` 是为了学习 `/home/evan/projects/openvpm` 的 `main`。一步只做一个可运行行为，但写出的包、表、字段、路由和调用方式都按 main 的结构来。全部迭代结束后，代码应与 main 完全一致。
+
+不要另起一套 main 没有的表、包或流程。`LEARNING.md` 里暂缓的订阅、税、提醒、RLS、短信、Stripe、AI，是后一步补成 main 的样子，不是改成别的做法。
+
+对照 main 时用自己的话写清要保住的行为，再写代码。不要整文件粘贴生产实现来跳过这一步。

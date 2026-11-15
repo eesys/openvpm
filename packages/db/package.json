@@ -1,0 +1,28 @@
+{
+  "name": "@openpims/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./schema/index.ts",
+    "./client": "./client.ts",
+    "./connection-policy": "./connection-policy.ts"
+  },
+  "scripts": {
+    "db:up": "docker compose -f ../../docker/docker-compose.yml up -d postgres",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx seed.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.0",
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.0"
+  },
+  "devDependencies": {
+    "@openpims/config": "workspace:*",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.23.12",
+    "typescript": "^5.5.0"
+  }
+}

@@ -2,10 +2,14 @@
   "name": "openvpm",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @openpims/web dev"
+    "dev": "pnpm --filter @openpims/web dev",
+    "db:up": "pnpm --filter @openpims/db db:up",
+    "db:generate": "pnpm --filter @openpims/db db:generate",
+    "db:migrate": "pnpm --filter @openpims/db db:migrate",
+    "db:seed": "pnpm --filter @openpims/db db:seed"
   },
   "packageManager": "pnpm@9.15.0",
   "engines": {
-    "node": "^24.22.1"
+    "node": "^24.18.0"
   }
 }

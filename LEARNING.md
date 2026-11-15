@@ -14,7 +14,7 @@
 顺序跟诊所一天的数据流一致，也跟 `main` 上 `packages/db/schema/index.ts` 的依赖一致：诊所 → 人 → 客户 → 患者 → 预约 → 病历 → 账单。tRPC 路由的对应入口在 `apps/web/server/routers/_app.ts`。
 
 1. **空壳能启动。** 对照 `package.json`、`pnpm-workspace.yaml`。最小 pnpm workspace，加一个能打开的 Next 页面。
-2. **诊所和员工。** 对照 `packages/db/schema/common.ts`、`packages/db/schema/practices.ts`、`packages/db/schema/users.ts`，以及 `docker/docker-compose.yml` 里的 Postgres。只建 practice、user、membership。先不做订阅、税、提醒开关。
+2. **诊所和员工。** 对照 `packages/db/schema/common.ts`、`packages/db/schema/practices.ts`、`packages/db/schema/users.ts`，以及 `docker/docker-compose.yml` 里的 Postgres。只建 practice、user。先不做订阅、税、提醒开关。
 3. **登录。** 对照 `packages/db/schema/auth.ts` 和 `apps/web/server/routers/auth.ts`。邮箱密码、数据库会话、请求里能拿到当前 practice。先不做 TOTP、邀请、找回密码。
 4. **客户和患者。** 对照 `packages/db/schema/clients.ts`、`packages/db/schema/patients.ts`，以及 `clients` / `patients` router。一个客户名下多只宠物，列表和详情可读写。
 5. **预约。** 对照 `packages/db/schema/scheduling.ts` 和 appointments router。把一只患者约到某位医生的某个时间段。
