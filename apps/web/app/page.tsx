@@ -1,11 +1,34 @@
-import { isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { db } from "@openpims/db/client";
-import { practices, users } from "@openpims/db";
+import { practices } from "@openpims/db";
+import { appRouter } from "@/server/routers/_app";
+import { createTRPCContext } from "@/server/trpc";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const clinics = await db
+  const caller = appRouter.createCaller(await createTRPCContext());
+  let me: Awaited<ReturnType<typeof caller.auth.me>> | null = null;
+  try {
+    me = await caller.auth.me();
+  } catch (error) {
+    if (!(error instanceof TRPCError) || error.code !== "UNAUTHORIZED") {
+      throw error;
+    }
+  }
+
+  if (!me?.practiceId) {
+    return (
+      <main>
+        <h1>OpenVPM</h1>
+        <p>Sign in to open your clinic.</p>
+        <a href="/login">Sign in</a>
+      </main>
+    );
+  }
+
+  const [clinic] = await db
     .select({
       id: practices.id,
       name: practices.name,
@@ -14,45 +37,25 @@ export default async function HomePage() {
       timezone: practices.timezone,
     })
     .from(practices)
-    .where(isNull(practices.deletedAt));
-
-  const staff = await db
-    .select({
-      id: users.id,
-      practiceId: users.practiceId,
-      name: users.name,
-      email: users.email,
-      role: users.role,
-    })
-    .from(users)
-    .where(isNull(users.deletedAt));
+    .where(and(eq(practices.id, me.practiceId), isNull(practices.deletedAt)));
 
   return (
     <main>
       <h1>OpenVPM</h1>
-      {clinics.length === 0 ? (
-        <p>No clinic has been recorded yet.</p>
+      <p>
+        {me.name} — {me.role} — {me.email}
+      </p>
+      {clinic ? (
+        <section>
+          <h2>{clinic.name}</h2>
+          <p>
+            {[clinic.email, clinic.phone, clinic.timezone]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </section>
       ) : (
-        clinics.map((clinic) => (
-          <section key={clinic.id}>
-            <h2>{clinic.name}</h2>
-            <p>
-              {[clinic.email, clinic.phone, clinic.timezone]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-            <h3>Staff</h3>
-            <ul>
-              {staff
-                .filter((person) => person.practiceId === clinic.id)
-                .map((person) => (
-                  <li key={person.id}>
-                    {person.name} — {person.role} — {person.email}
-                  </li>
-                ))}
-            </ul>
-          </section>
-        ))
+        <p>This account&apos;s clinic could not be found.</p>
       )}
     </main>
   );

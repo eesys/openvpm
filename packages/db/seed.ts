@@ -16,6 +16,9 @@ const db = drizzle(sql);
 
 const clinicName = "Harbor Animal Clinic";
 const staffEmail = "mina@harbor.example";
+// bcrypt cost 12 for "password123", same cost main uses for staff passwords.
+const passwordHash =
+  "$2a$12$SfAqlcRMnLkebDqs9eBQm.jsQH9Z2zYd2gYAEeVXc4V1qypSKeiSK";
 
 const [existingClinic] = await db
   .select()
@@ -41,6 +44,14 @@ const [existingStaff] = await db
   .from(users)
   .where(eq(users.email, staffEmail));
 
+if (existingStaff && !existingStaff.passwordHash.startsWith("$2")) {
+  await db
+    .update(users)
+    .set({ passwordHash })
+    .where(eq(users.id, existingStaff.id));
+  existingStaff.passwordHash = passwordHash;
+}
+
 const staff =
   existingStaff ??
   (
@@ -48,7 +59,7 @@ const staff =
       .insert(users)
       .values({
         email: staffEmail,
-        passwordHash: "not-a-login-yet",
+        passwordHash,
         name: "Mina Chen",
         role: "veterinarian",
         isVeterinarian: true,
