@@ -15,6 +15,13 @@
       "when": 1794706280155,
       "tag": "0001_auth_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794739194711,
+      "tag": "0002_abnormal_jigsaw",
+      "breakpoints": true
     }
   ]
 }

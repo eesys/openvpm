@@ -1,4 +1,5 @@
 import { initTRPC, TRPCError } from "@trpc/server";
+import superjson from "superjson";
 import type { Session } from "next-auth";
 import { getServerSession } from "next-auth";
 import { and, eq, isNull } from "drizzle-orm";
@@ -80,7 +81,9 @@ export async function createTRPCContext(): Promise<TRPCContext> {
   };
 }
 
-const t = initTRPC.context<TRPCContext>().create();
+const t = initTRPC.context<TRPCContext>().create({
+  transformer: superjson,
+});
 
 export const createRouter = t.router;
 export const publicProcedure = t.procedure;
@@ -103,3 +106,24 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next, type }) =>
     },
   });
 });
+
+export function requireRole(...roles: UserRole[]) {
+  return t.middleware(async ({ ctx, next }) => {
+    if (!ctx.session?.user) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+    if (!roles.includes(ctx.session.user.role)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Requires one of: ${roles.join(", ")}`,
+      });
+    }
+    return next({
+      ctx: {
+        session: ctx.session,
+        user: ctx.session.user,
+        practiceId: ctx.session.user.practiceId,
+      },
+    });
+  });
+}

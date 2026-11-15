@@ -53,6 +53,11 @@ export default async function HomePage() {
               .filter(Boolean)
               .join(" · ")}
           </p>
+          <p>
+            <a href="/clients">Clients</a>
+            {" · "}
+            <a href="/patients">Patients</a>
+          </p>
         </section>
       ) : (
         <p>This account&apos;s clinic could not be found.</p>
