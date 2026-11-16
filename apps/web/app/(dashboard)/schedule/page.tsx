@@ -83,13 +83,15 @@ function ScheduleDay({ canCreate }: { canCreate: boolean }) {
       <ul>
         {(appointments.data ?? []).map((appointment) => (
           <li key={appointment.id}>
-            {formatTime(appointment.startTime, timeZone)}–
-            {formatTime(appointment.endTime, timeZone)}
-            {" · "}
-            {appointment.patientName ?? "No patient"}
-            {appointment.doctorName ? ` · ${appointment.doctorName}` : ""}
-            {appointment.typeName ? ` · ${appointment.typeName}` : ""}
-            {` · ${appointment.status}`}
+            <a href={`/encounters/${appointment.id}`}>
+              {formatTime(appointment.startTime, timeZone)}–
+              {formatTime(appointment.endTime, timeZone)}
+              {" · "}
+              {appointment.patientName ?? "No patient"}
+              {appointment.doctorName ? ` · ${appointment.doctorName}` : ""}
+              {appointment.typeName ? ` · ${appointment.typeName}` : ""}
+              {` · ${appointment.status}`}
+            </a>
           </li>
         ))}
       </ul>

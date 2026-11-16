@@ -24,6 +24,8 @@ export default async function PatientDetailPage({
     throw error;
   }
 
+  const notes = await caller.records.listSoapNotes({ patientId: patient.id });
+
   return (
     <main>
       <p>
@@ -45,6 +47,24 @@ export default async function PatientDetailPage({
           Schedule
         </a>
       </p>
+      <h2>SOAP</h2>
+      {notes.length === 0 ? <p>No SOAP notes.</p> : null}
+      <ul>
+        {notes.map((note) => (
+          <li key={note.id}>
+            {note.appointmentId ? (
+              <a href={`/encounters/${note.appointmentId}`}>{note.status}</a>
+            ) : (
+              note.status
+            )}
+            {` · ${note.authorName}`}
+            {note.subjective ? ` · Subjective: ${note.subjective}` : ""}
+            {note.objective ? ` · Objective: ${note.objective}` : ""}
+            {note.assessment ? ` · Assessment: ${note.assessment}` : ""}
+            {note.plan ? ` · Plan: ${note.plan}` : ""}
+          </li>
+        ))}
+      </ul>
     </main>
   );
 }
