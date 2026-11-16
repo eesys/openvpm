@@ -38,6 +38,12 @@ export default async function PatientDetailPage({
       </p>
       <p>
         <a href={`/patients/${patient.id}/edit`}>Edit</a>
+        {" · "}
+        <a
+          href={`/schedule?patient=${encodeURIComponent(patient.name)}`}
+        >
+          Schedule
+        </a>
       </p>
     </main>
   );
