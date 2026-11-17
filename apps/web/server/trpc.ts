@@ -7,6 +7,11 @@ import { db } from "@openpims/db/client";
 import type { Database } from "@openpims/db/client";
 import { practices, users } from "@openpims/db";
 import { authOptions } from "@/lib/auth";
+import {
+  portalSessionTokenFromCookie,
+  resolvePortalSession,
+  type PortalSessionClient,
+} from "@/lib/portal/session";
 import { sessionVersionIsCurrent } from "@/lib/session-version";
 
 type UserRole =
@@ -30,6 +35,9 @@ interface AppSession extends Session {
 export type TRPCContext = {
   db: Database;
   session: AppSession | null;
+  portalSessionToken?: string | null;
+  portalClient?: PortalSessionClient;
+  portalSessionId?: string;
 };
 
 async function activeSessionOrNull(
@@ -73,11 +81,16 @@ async function activeSessionOrNull(
   };
 }
 
-export async function createTRPCContext(): Promise<TRPCContext> {
+export async function createTRPCContext(opts?: {
+  req?: Request;
+}): Promise<TRPCContext> {
   const rawSession = (await getServerSession(authOptions)) as AppSession | null;
   return {
     db,
     session: await activeSessionOrNull(rawSession),
+    portalSessionToken: portalSessionTokenFromCookie(
+      opts?.req?.headers.get("cookie"),
+    ),
   };
 }
 
@@ -87,6 +100,26 @@ const t = initTRPC.context<TRPCContext>().create({
 
 export const createRouter = t.router;
 export const publicProcedure = t.procedure;
+
+export const portalProcedure = publicProcedure.use(async ({ ctx, next }) => {
+  const portalSession =
+    ctx.portalClient && ctx.portalSessionId
+      ? { client: ctx.portalClient, sessionId: ctx.portalSessionId }
+      : await resolvePortalSession(ctx.db, ctx.portalSessionToken);
+  if (!portalSession) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Portal session expired",
+    });
+  }
+  return next({
+    ctx: {
+      ...ctx,
+      portalClient: portalSession.client,
+      portalSessionId: portalSession.sessionId,
+    },
+  });
+});
 
 export const protectedProcedure = t.procedure.use(async ({ ctx, next, type }) => {
   if (!ctx.session?.user) {

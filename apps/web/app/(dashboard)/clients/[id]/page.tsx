@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { notFound, redirect } from "next/navigation";
+import { PortalLink } from "./portal-link";
 import { appRouter } from "@/server/routers/_app";
 import { createTRPCContext } from "@/server/trpc";
 export const dynamic = "force-dynamic";
@@ -39,6 +40,7 @@ export default async function ClientDetailPage({
       <p>
         <a href={`/clients/${client.id}/edit`}>Edit</a>
       </p>
+      <PortalLink clientId={client.id} />
       <h2>Patients</h2>
       <ul>
         {client.patients.map((patient) => (

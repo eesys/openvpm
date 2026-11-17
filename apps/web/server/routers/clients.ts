@@ -2,7 +2,12 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, isNull, or, sql, type SQL } from "drizzle-orm";
 import type { AnyColumn } from "drizzle-orm";
 import { z } from "zod";
-import { clients, patients, practices } from "@openpims/db";
+import { clients, patients, portalSessions, practices } from "@openpims/db";
+import {
+  generatePortalAccessToken,
+  hashPortalAccessToken,
+  PORTAL_ACCESS_TOKEN_TTL_MS,
+} from "@/lib/portal/tokens";
 import {
   CLIENT_ADDRESS_MAX_LENGTH,
   CLIENT_CITY_MAX_LENGTH,
@@ -20,6 +25,10 @@ import { listOffsetInput } from "./pagination";
 const clientManagerProcedure = protectedProcedure.use(
   requireRole("admin", "veterinarian", "technician", "front_desk"),
 );
+
+function withoutPortalSecret<T extends { accessToken: string | null }>(client: T) {
+  return { ...client, accessToken: null };
+}
 
 const clientNameInput = z.string().trim().min(1).max(CLIENT_NAME_MAX_LENGTH);
 const clientEmailInput = z
@@ -123,7 +132,7 @@ export const clientsRouter = createRouter({
       }
 
       return {
-        items,
+        items: items.map(withoutPortalSecret),
         total: Number(countResult[0]?.count ?? 0),
         timezone: practiceResult[0].timezone ?? null,
       };
@@ -185,7 +194,7 @@ export const clientsRouter = createRouter({
         )
         .orderBy(patients.name);
 
-      return { ...client, patients: clientPatients };
+      return { ...withoutPortalSecret(client), patients: clientPatients };
     }),
 
   create: clientManagerProcedure
@@ -214,7 +223,7 @@ export const clientsRouter = createRouter({
           message: "Client could not be created",
         });
       }
-      return client;
+      return withoutPortalSecret(client);
     }),
 
   update: clientManagerProcedure
@@ -250,6 +259,49 @@ export const clientsRouter = createRouter({
       if (!client) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
       }
-      return client;
+      return withoutPortalSecret(client);
+    }),
+
+  rotatePortalAccessToken: clientManagerProcedure
+    .input(z.object({ id: z.string().guid() }))
+    .mutation(async ({ ctx, input }) => {
+      const rawToken = generatePortalAccessToken();
+      const now = new Date();
+      const client = await ctx.db.transaction(async (tx) => {
+        const [updated] = await tx
+          .update(clients)
+          .set({
+            accessToken: hashPortalAccessToken(rawToken),
+            portalAccessTokenExpiresAt: new Date(
+              now.getTime() + PORTAL_ACCESS_TOKEN_TTL_MS,
+            ),
+            portalAccessTokenUsedAt: null,
+          })
+          .where(
+            and(
+              eq(clients.id, input.id),
+              eq(clients.practiceId, ctx.practiceId),
+              activePracticePredicate(ctx.practiceId),
+              isNull(clients.deletedAt),
+            ),
+          )
+          .returning({ id: clients.id });
+        if (!updated) return null;
+        await tx
+          .update(portalSessions)
+          .set({ revokedAt: now, revokedReason: "staff_access_reset" })
+          .where(
+            and(
+              eq(portalSessions.clientId, updated.id),
+              eq(portalSessions.practiceId, ctx.practiceId),
+              isNull(portalSessions.revokedAt),
+            ),
+          );
+        return updated;
+      });
+      if (!client) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
+      }
+      return { id: client.id, accessToken: rawToken };
     }),
 });

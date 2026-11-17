@@ -5,6 +5,7 @@ import { billingRouter } from "./billing";
 import { clientsRouter } from "./clients";
 import { inventoryRouter } from "./inventory";
 import { patientsRouter } from "./patients";
+import { portalRouter } from "./portal";
 import { recordsRouter } from "./records";
 import { whiteboardRouter } from "./whiteboard";
 
@@ -15,6 +16,7 @@ export const appRouter = createRouter({
   clients: clientsRouter,
   inventory: inventoryRouter,
   patients: patientsRouter,
+  portal: portalRouter,
   records: recordsRouter,
   whiteboard: whiteboardRouter,
 });

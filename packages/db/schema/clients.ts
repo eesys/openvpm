@@ -1,13 +1,15 @@
 import {
+  check,
   pgTable,
   pgEnum,
   uuid,
   varchar,
   text,
+  timestamp,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { baseColumns } from "./common";
 import { practices } from "./practices";
 
@@ -39,6 +41,15 @@ export const clients = pgTable(
       "preferred_contact_method",
     ).default("phone"),
     notes: text("notes"),
+    // SHA-256 of the current one-time portal link. The raw token is returned
+    // once, when staff issues it.
+    accessToken: varchar("access_token", { length: 64 }).unique(),
+    portalAccessTokenExpiresAt: timestamp("portal_access_token_expires_at", {
+      withTimezone: true,
+    }),
+    portalAccessTokenUsedAt: timestamp("portal_access_token_used_at", {
+      withTimezone: true,
+    }),
   },
   (table) => ({
     practiceIdUq: uniqueIndex("clients_practice_id_uq").on(
@@ -59,6 +70,17 @@ export const clients = pgTable(
       table.lastName,
     ),
     emailIdx: index("clients_email_idx").on(table.email),
+    portalAccessTokenStateCheck: check(
+      "clients_portal_access_token_state_check",
+      sql`(
+        ${table.accessToken} is null
+        and ${table.portalAccessTokenExpiresAt} is null
+        and ${table.portalAccessTokenUsedAt} is null
+      ) or (
+        ${table.accessToken} ~ '^[0-9a-f]{64}$'
+        and ${table.portalAccessTokenExpiresAt} is not null
+      )`,
+    ),
   }),
 );
 
