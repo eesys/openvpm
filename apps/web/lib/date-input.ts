@@ -138,6 +138,14 @@ export function formatDateInputForTimeZone(
   return formatDateInputLocal(date);
 }
 
+export function dateInputUtcRangeForTimeZone(
+  date = new Date(),
+  timeZone?: string | null,
+): { date: string; start: Date; end: Date } {
+  const dateInput = formatDateInputForTimeZone(date, timeZone);
+  return dateInputDayUtcRange(dateInput, timeZone);
+}
+
 export function dateInputDayUtcRange(
   dateInput: string,
   timeZone?: string | null,

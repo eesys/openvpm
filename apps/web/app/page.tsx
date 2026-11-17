@@ -61,6 +61,8 @@ export default async function HomePage() {
             <a href="/schedule">Schedule</a>
             {" · "}
             <a href="/inventory">Inventory</a>
+            {" · "}
+            <a href="/whiteboard">Whiteboard</a>
           </p>
         </section>
       ) : (

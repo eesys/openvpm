@@ -6,6 +6,7 @@ import { clientsRouter } from "./clients";
 import { inventoryRouter } from "./inventory";
 import { patientsRouter } from "./patients";
 import { recordsRouter } from "./records";
+import { whiteboardRouter } from "./whiteboard";
 
 export const appRouter = createRouter({
   auth: authRouter,
@@ -15,6 +16,7 @@ export const appRouter = createRouter({
   inventory: inventoryRouter,
   patients: patientsRouter,
   records: recordsRouter,
+  whiteboard: whiteboardRouter,
 });
 
 export type AppRouter = typeof appRouter;
