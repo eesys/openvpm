@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { getChargeCaptureLock } from "@/lib/encounters/charge-capture-access";
 import { trpc } from "@/lib/trpc";
 import { hasSoapContent } from "@/lib/records/soap-content";
 
@@ -17,6 +18,10 @@ function canManageVisit(role?: string | null): boolean {
 
 function canCreateSoap(role?: string | null): boolean {
   return role === "admin" || role === "veterinarian";
+}
+
+function canManageBilling(role?: string | null): boolean {
+  return role === "admin" || role === "front_desk";
 }
 
 function nextVisitAction(status: string): {
@@ -134,6 +139,17 @@ function EncounterVisit({
         />
       ) : (
         <p>Attach a patient before writing a SOAP note.</p>
+      )}
+      {visit.clientId && visit.patientId ? (
+        <VisitCharges
+          appointmentId={visit.id}
+          clientId={visit.clientId}
+          patientId={visit.patientId}
+          appointmentStatus={visit.status}
+          role={role}
+        />
+      ) : (
+        <p>Attach a patient before adding visit charges.</p>
       )}
     </main>
   );
@@ -376,6 +392,119 @@ function SoapSections({
       {note.assessment ? <p>Assessment: {note.assessment}</p> : null}
       {note.plan ? <p>Plan: {note.plan}</p> : null}
     </article>
+  );
+}
+
+function VisitCharges({
+  appointmentId,
+  clientId,
+  patientId,
+  appointmentStatus,
+  role,
+}: {
+  appointmentId: string;
+  clientId: string;
+  patientId: string;
+  appointmentStatus: string;
+  role?: string | null;
+}) {
+  const utils = trpc.useUtils();
+  const lock = getChargeCaptureLock({
+    roleCanManageBilling: canManageBilling(role),
+    appointmentStatus,
+    closeoutStatus: null,
+  });
+  const invoices = trpc.billing.listInvoices.useQuery({
+    appointmentId,
+    isEstimate: false,
+    limit: 25,
+    offset: 0,
+  });
+  const active = (invoices.data?.items ?? []).find(
+    (invoice) => invoice.status !== "void",
+  );
+  const detail = trpc.billing.getInvoice.useQuery(
+    { id: active?.id ?? "" },
+    { enabled: Boolean(active) },
+  );
+  const catalog = trpc.billing.listServices.useQuery(undefined, {
+    enabled: !active && !lock,
+  });
+  const createInvoice = trpc.billing.createInvoice.useMutation({
+    onSuccess: async () => {
+      await utils.billing.listInvoices.invalidate({
+        appointmentId,
+        isEstimate: false,
+        limit: 25,
+        offset: 0,
+      });
+    },
+  });
+  const [serviceId, setServiceId] = useState("");
+  const selected = (catalog.data ?? []).find((service) => service.id === serviceId);
+
+  return (
+    <section>
+      <h2>Visit charges</h2>
+      {invoices.error ? <p>{invoices.error.message}</p> : null}
+      {detail.data ? (
+        <article>
+          <p>
+            {detail.data.status} · {detail.data.total}
+          </p>
+          <ul>
+            {detail.data.items.map((item) => (
+              <li key={item.id}>
+                {item.description} · {item.quantity} · {item.unitPrice}
+              </li>
+            ))}
+          </ul>
+        </article>
+      ) : null}
+      {!active && lock ? <p>{lock.message}</p> : null}
+      {!active && !lock ? (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!selected) return;
+            createInvoice.mutate({
+              appointmentId,
+              clientId,
+              patientId,
+              isEstimate: false,
+              items: [
+                {
+                  description: selected.name,
+                  quantity: 1,
+                  unitPrice: selected.defaultPrice,
+                  itemType: "service",
+                  itemId: selected.id,
+                },
+              ],
+            });
+          }}
+        >
+          <label>
+            Service{" "}
+            <select
+              value={serviceId}
+              onChange={(event) => setServiceId(event.target.value)}
+            >
+              <option value="">Select a service...</option>
+              {(catalog.data ?? []).map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name} · {service.defaultPrice}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" disabled={!selected || createInvoice.isPending}>
+            Save draft invoice
+          </button>
+          {createInvoice.error ? <p>{createInvoice.error.message}</p> : null}
+        </form>
+      ) : null}
+    </section>
   );
 }
 

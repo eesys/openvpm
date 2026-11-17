@@ -36,6 +36,13 @@
       "when": 1794835579037,
       "tag": "0004_third_shadowcat",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794916021595,
+      "tag": "0005_gifted_wind_dancer",
+      "breakpoints": true
     }
   ]
 }
