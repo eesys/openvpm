@@ -59,6 +59,8 @@ export default async function HomePage() {
             <a href="/patients">Patients</a>
             {" · "}
             <a href="/schedule">Schedule</a>
+            {" · "}
+            <a href="/inventory">Inventory</a>
           </p>
         </section>
       ) : (

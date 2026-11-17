@@ -3,6 +3,7 @@ import {
   check,
   date,
   index,
+  integer,
   numeric,
   pgEnum,
   pgTable,
@@ -191,6 +192,92 @@ export const invoiceItems = pgTable(
   }),
 );
 
+export const products = pgTable(
+  "products",
+  {
+    ...baseColumns(),
+    practiceId: uuid("practice_id")
+      .notNull()
+      .references(() => practices.id),
+    name: varchar("name", { length: 255 }).notNull(),
+    sku: varchar("sku", { length: 64 }),
+    category: varchar("category", { length: 128 }),
+    unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull(),
+    taxable: boolean("taxable").notNull().default(true),
+    costPrice: numeric("cost_price", { precision: 10, scale: 2 }),
+    inventoryTracked: boolean("inventory_tracked").notNull().default(true),
+    stockQuantity: numeric("stock_quantity", {
+      precision: 13,
+      scale: 3,
+      mode: "number",
+    })
+      .notNull()
+      .default(0),
+    reorderPoint: integer("reorder_point").default(10),
+    lotNumber: varchar("lot_number", { length: 64 }),
+    expirationDate: date("expiration_date"),
+    externalSource: varchar("external_source", { length: 64 }),
+    externalId: varchar("external_id", { length: 160 }),
+    importFingerprint: varchar("import_fingerprint", { length: 64 }),
+  },
+  (table) => ({
+    practiceIdx: index("products_practice_idx").on(
+      table.practiceId,
+      table.deletedAt,
+    ),
+    practiceNameIdx: index("products_practice_name_idx").on(
+      table.practiceId,
+      table.deletedAt,
+      table.name,
+    ),
+    skuIdx: index("products_sku_idx").on(table.practiceId, table.sku),
+    expirationIdx: index("products_expiration_idx").on(
+      table.practiceId,
+      table.expirationDate,
+      table.deletedAt,
+    ),
+    stockAlertIdx: index("products_stock_alert_idx").on(
+      table.practiceId,
+      table.deletedAt,
+      table.stockQuantity,
+    ),
+    practiceIdUq: uniqueIndex("products_practice_id_uq").on(
+      table.practiceId,
+      table.id,
+    ),
+    externalIdUq: uniqueIndex("products_external_id_uq")
+      .on(table.practiceId, table.externalSource, table.externalId)
+      .where(
+        sql`${table.externalSource} is not null and ${table.externalId} is not null`,
+      ),
+    importFingerprintUq: uniqueIndex("products_import_fingerprint_uq")
+      .on(table.practiceId, table.importFingerprint)
+      .where(sql`${table.importFingerprint} is not null`),
+    importIdentityCheck: check(
+      "products_import_identity_check",
+      sql`(${table.externalSource} is null and ${table.externalId} is null and ${table.importFingerprint} is null)
+        or (${table.externalSource} is not null and ${table.externalId} is not null and ${table.importFingerprint} is not null)`,
+    ),
+    importFingerprintCheck: check(
+      "products_import_fingerprint_check",
+      sql`${table.importFingerprint} is null or ${table.importFingerprint} ~ '^[0-9a-f]{64}$'`,
+    ),
+    externalSourceCheck: check(
+      "products_external_source_check",
+      sql`${table.externalSource} is null or ${table.externalSource} ~ '^[a-z0-9][a-z0-9_-]{0,63}$'`,
+    ),
+    inventoryTrackingCheck: check(
+      "products_inventory_tracking_check",
+      sql`${table.inventoryTracked} or (
+        ${table.stockQuantity} = 0
+        and ${table.reorderPoint} is null
+        and ${table.lotNumber} is null
+        and ${table.expirationDate} is null
+      )`,
+    ),
+  }),
+);
+
 export const servicesRelations = relations(services, ({ one }) => ({
   practice: one(practices, {
     fields: [services.practiceId],
@@ -222,5 +309,12 @@ export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
   invoice: one(invoices, {
     fields: [invoiceItems.invoiceId],
     references: [invoices.id],
+  }),
+}));
+
+export const productsRelations = relations(products, ({ one }) => ({
+  practice: one(practices, {
+    fields: [products.practiceId],
+    references: [practices.id],
   }),
 }));

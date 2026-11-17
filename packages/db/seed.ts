@@ -2,7 +2,13 @@ import { config } from "dotenv";
 import { and, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { appointmentTypes, practices, services, users } from "./schema/index";
+import {
+  appointmentTypes,
+  practices,
+  products,
+  services,
+  users,
+} from "./schema/index";
 
 config({ path: "../../.env" });
 
@@ -167,6 +173,27 @@ if (!existingService) {
       taxable: true,
     })),
   );
+}
+
+const [existingProduct] = await db
+  .select({ id: products.id })
+  .from(products)
+  .where(and(eq(products.practiceId, clinic.id), isNull(products.deletedAt)))
+  .limit(1);
+
+if (!existingProduct) {
+  await db.insert(products).values({
+    practiceId: clinic.id,
+    name: "Rimadyl 75mg tablet",
+    sku: "MED-001",
+    category: "Medication",
+    unitPrice: "1.42",
+    costPrice: "0.70",
+    taxable: true,
+    inventoryTracked: true,
+    stockQuantity: 2700,
+    reorderPoint: 900,
+  });
 }
 
 console.log(

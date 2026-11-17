@@ -3,6 +3,7 @@ import { appointmentsRouter } from "./appointments";
 import { authRouter } from "./auth";
 import { billingRouter } from "./billing";
 import { clientsRouter } from "./clients";
+import { inventoryRouter } from "./inventory";
 import { patientsRouter } from "./patients";
 import { recordsRouter } from "./records";
 
@@ -11,6 +12,7 @@ export const appRouter = createRouter({
   appointments: appointmentsRouter,
   billing: billingRouter,
   clients: clientsRouter,
+  inventory: inventoryRouter,
   patients: patientsRouter,
   records: recordsRouter,
 });

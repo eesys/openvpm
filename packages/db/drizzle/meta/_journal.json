@@ -43,6 +43,13 @@
       "when": 1794916021595,
       "tag": "0005_gifted_wind_dancer",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794918887099,
+      "tag": "0006_flimsy_outlaw_kid",
+      "breakpoints": true
     }
   ]
 }
