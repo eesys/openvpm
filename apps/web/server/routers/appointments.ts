@@ -10,6 +10,7 @@ import {
   users,
 } from "@openpims/db";
 import type { Database } from "@openpims/db/client";
+import { dispatchAppointmentWebhookAfterCommit } from "@/lib/appointment-webhooks";
 import {
   APPOINTMENT_DURATION_MAX_MINUTES,
   APPOINTMENT_DURATION_MIN_MINUTES,
@@ -428,7 +429,7 @@ export const appointmentsRouter = createRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.transaction(async (tx) => {
+      const { appointment, previousStatus } = await ctx.db.transaction(async (tx) => {
         const [current] = await tx
           .select({
             id: appointments.id,
@@ -577,8 +578,31 @@ export const appointmentsRouter = createRouter({
             message: "Appointment changed; refresh and retry.",
           });
         }
-        return updated;
+        return { appointment: updated, previousStatus: current.status };
       });
+      if (appointment.status === "checked_in") {
+        await dispatchAppointmentWebhookAfterCommit(
+          ctx,
+          ctx.practiceId,
+          "appointment.checked_in",
+          {
+            id: appointment.id,
+            appointmentId: appointment.id,
+            startTime: appointment.startTime,
+            endTime: appointment.endTime,
+            status: appointment.status,
+            previousStatus,
+            patientId: appointment.patientId,
+            clientId: appointment.clientId,
+            doctorId: appointment.doctorId,
+            roomId: null,
+            locationId: null,
+            typeId: appointment.typeId,
+            source: "dashboard",
+          },
+        );
+      }
+      return appointment;
     }),
 
   create: protectedProcedure

@@ -1,7 +1,9 @@
 import {
+  boolean,
   check,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -101,6 +103,27 @@ export const communications = pgTable(
   }),
 );
 
+export const webhooks = pgTable(
+  "webhooks",
+  {
+    ...baseColumns(),
+    practiceId: uuid("practice_id")
+      .notNull()
+      .references(() => practices.id),
+    url: varchar("url", { length: 512 }).notNull(),
+    events: jsonb("events").$type<string[]>().notNull().default([]),
+    secret: varchar("secret", { length: 255 }).notNull(),
+    active: boolean("active").notNull().default(true),
+  },
+  (table) => ({
+    practiceActiveIdx: index("webhooks_practice_active_idx").on(
+      table.practiceId,
+      table.deletedAt,
+      table.active,
+    ),
+  }),
+);
+
 export const communicationsRelations = relations(communications, ({ one }) => ({
   practice: one(practices, {
     fields: [communications.practiceId],
@@ -113,5 +136,12 @@ export const communicationsRelations = relations(communications, ({ one }) => ({
   assignedToUser: one(users, {
     fields: [communications.assignedTo],
     references: [users.id],
+  }),
+}));
+
+export const webhooksRelations = relations(webhooks, ({ one }) => ({
+  practice: one(practices, {
+    fields: [webhooks.practiceId],
+    references: [practices.id],
   }),
 }));
