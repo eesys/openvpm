@@ -1,4 +1,5 @@
 import { createRouter } from "../trpc";
+import { apiKeysRouter } from "./api-keys";
 import { appointmentsRouter } from "./appointments";
 import { authRouter } from "./auth";
 import { billingRouter } from "./billing";
@@ -12,6 +13,7 @@ import { webhooksRouter } from "./webhooks";
 import { whiteboardRouter } from "./whiteboard";
 
 export const appRouter = createRouter({
+  apiKeys: apiKeysRouter,
   auth: authRouter,
   appointments: appointmentsRouter,
   billing: billingRouter,
