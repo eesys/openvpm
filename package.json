@@ -6,7 +6,9 @@
     "db:up": "pnpm --filter @openpims/db db:up",
     "db:generate": "pnpm --filter @openpims/db db:generate",
     "db:migrate": "pnpm --filter @openpims/db db:migrate",
-    "db:seed": "pnpm --filter @openpims/db db:seed"
+    "db:seed": "pnpm --filter @openpims/db db:seed",
+    "db:rls": "pnpm --filter @openpims/db db:rls",
+    "db:rls:preflight": "pnpm --filter @openpims/db db:rls:preflight"
   },
   "packageManager": "pnpm@9.15.0",
   "engines": {

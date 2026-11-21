@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { apiKeys, practices } from "@openpims/db";
 import { db } from "@openpims/db/client";
 import { API_KEY_HASH_COST } from "@/lib/auth-hashing";
+import { withSystem } from "@/lib/tenant-db";
 
 /** Public prefix for every issued key. Also used as the human-visible label. */
 export const API_KEY_PREFIX = "ovpm_";
@@ -98,10 +99,12 @@ export async function authenticateApiKey(
 
   let candidates;
   try {
-    candidates = await db
-      .select()
-      .from(apiKeys)
-      .where(and(eq(apiKeys.keyPrefix, prefix), isNull(apiKeys.deletedAt)));
+    candidates = await withSystem(db, (tx) =>
+      tx
+        .select()
+        .from(apiKeys)
+        .where(and(eq(apiKeys.keyPrefix, prefix), isNull(apiKeys.deletedAt))),
+    );
   } catch (error) {
     console.error("[api-auth] key lookup failed:", error);
     return err("Internal error", 500);
@@ -121,11 +124,15 @@ export async function authenticateApiKey(
 
   let practice: { id: string } | undefined;
   try {
-    [practice] = await db
-      .select({ id: practices.id })
-      .from(practices)
-      .where(and(eq(practices.id, matched.practiceId), isNull(practices.deletedAt)))
-      .limit(1);
+    [practice] = await withSystem(db, (tx) =>
+      tx
+        .select({ id: practices.id })
+        .from(practices)
+        .where(
+          and(eq(practices.id, matched.practiceId), isNull(practices.deletedAt)),
+        )
+        .limit(1),
+    );
   } catch (error) {
     console.error("[api-auth] practice lookup failed:", error);
     return err("Internal error", 500);
@@ -140,11 +147,12 @@ export async function authenticateApiKey(
     return err(`API key missing required scope: ${requiredScope}`, 403);
   }
 
-  void db
-    .update(apiKeys)
-    .set({ lastUsedAt: new Date() })
-    .where(eq(apiKeys.id, matched.id))
-    .catch((error) => console.error("[api-auth] lastUsedAt update failed:", error));
+  void withSystem(db, (tx) =>
+    tx
+      .update(apiKeys)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(apiKeys.id, matched.id)),
+  ).catch((error) => console.error("[api-auth] lastUsedAt update failed:", error));
 
   return {
     ok: true,

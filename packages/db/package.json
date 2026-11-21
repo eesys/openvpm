@@ -12,7 +12,9 @@
     "db:up": "docker compose -f ../../docker/docker-compose.yml up -d postgres",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "tsx seed.ts"
+    "db:seed": "tsx seed.ts",
+    "db:rls": "tsx apply-rls.ts",
+    "db:rls:preflight": "tsx rls-preflight.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.0",
